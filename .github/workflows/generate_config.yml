@@ -17,8 +17,7 @@ jobs:
       - name: Generate config file
         run: |
           echo "{" > config.json
-          echo "  \"client_id\": \"${{ secrets.OAUTH_CLIENT_ID }}\"," >> config.json
-          echo "  \"github_token\": \"${{ secrets.REPO_TOKEN }}\"" >> config.json
+          echo "  \"client_id\": \"${{ secrets.OAUTH_CLIENT_ID }}\"" >> config.json
           echo "}" >> config.json
           
       - name: Commit config file
