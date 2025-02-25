@@ -7,13 +7,15 @@ on:
 jobs:
   handle-oauth:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v2
       
       - name: Exchange code for token
         env:
-          CLIENT_ID: ${{ secrets.GITHUB_CLIENT_ID }}
-          CLIENT_SECRET: ${{ secrets.GITHUB_CLIENT_SECRET }}
+          CLIENT_ID: ${{ secrets.OAUTH_CLIENT_ID }}
+          CLIENT_SECRET: ${{ secrets.OAUTH_CLIENT_SECRET }}
           CODE: ${{ github.event.client_payload.code }}
         run: |
           response=$(curl -s -X POST \
@@ -22,12 +24,13 @@ jobs:
             --data "{\"client_id\":\"$CLIENT_ID\",\"client_secret\":\"$CLIENT_SECRET\",\"code\":\"$CODE\"}" \
             https://github.com/login/oauth/access_token)
           
-          echo $response > token.json
+          mkdir -p .tokens
+          echo $response > .tokens/token.json
           
       - name: Commit token file
         run: |
           git config --global user.name 'GitHub Action'
           git config --global user.email 'action@github.com'
-          git add token.json
+          git add .tokens/token.json
           git commit -m "Update token"
           git push
