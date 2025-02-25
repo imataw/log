@@ -65,14 +65,50 @@
             }
 
             try {
-                // 将认证码保存到 URL 参数中
-                const tokenUrl = `/log/.auth/${code}.json`;
-                
-                // 开始轮询等待 token
+                const config = await getConfig();
+                if (!config || !config.client_id) {
+                    throw new Error('无法加载配置');
+                }
+
+                // 触发工作流
+                const response = await fetch('https://api.github.com/repos/imataw/log/dispatches', {
+                    method: 'POST',
+                    headers: {
+                        'Accept': 'application/vnd.github.v3+json',
+                        'Authorization': `Bearer ${config.github_token}`, // 使用仓库级别的 token
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        event_type: 'oauth-callback',
+                        client_payload: {
+                            code: code,
+                            state: state
+                        }
+                    })
+                });
+
+                if (!response.ok) {
+                    throw new Error('触发工作流失败');
+                }
+
+                // 等待token生成
                 await waitForToken(code);
             } catch (error) {
                 console.error('Error:', error);
                 showError('认证处理失败: ' + error.message);
+            }
+        }
+
+        async function getConfig() {
+            try {
+                const response = await fetch('/log/config.json');
+                if (!response.ok) {
+                    throw new Error('配置加载失败');
+                }
+                return await response.json();
+            } catch (error) {
+                console.error('Error loading config:', error);
+                throw error;
             }
         }
 
