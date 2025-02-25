@@ -18,19 +18,19 @@ jobs:
           CLIENT_SECRET: ${{ secrets.OAUTH_CLIENT_SECRET }}
           CODE: ${{ github.event.client_payload.code }}
         run: |
+          mkdir -p .tokens
           response=$(curl -s -X POST \
             -H "Accept: application/json" \
             -H "Content-Type: application/json" \
             --data "{\"client_id\":\"$CLIENT_ID\",\"client_secret\":\"$CLIENT_SECRET\",\"code\":\"$CODE\"}" \
             https://github.com/login/oauth/access_token)
           
-          mkdir -p .tokens
-          echo $response > .tokens/token.json
+          echo "$response" > .tokens/token.json
           
       - name: Commit token file
         run: |
           git config --global user.name 'GitHub Action'
           git config --global user.email 'action@github.com'
           git add .tokens/token.json
-          git commit -m "Update token"
-          git push
+          git commit -m "Update token" || echo "No changes to commit"
+          git push || echo "No changes to push"
