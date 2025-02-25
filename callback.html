@@ -68,34 +68,8 @@
             }
 
             try {
-                // 构建完整的个人访问令牌，用于触发工作流程
-                const pat = await createPAT(code);
-                
-                if (!pat) {
-                    throw new Error('无法创建个人访问令牌');
-                }
-
-                // 触发 GitHub Action
-                const response = await fetch(`https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/dispatches`, {
-                    method: 'POST',
-                    headers: {
-                        'Accept': 'application/vnd.github.v3+json',
-                        'Authorization': `Bearer ${pat}`,
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        event_type: 'oauth-callback',
-                        client_payload: {
-                            code: code,
-                            state: state
-                        }
-                    })
-                });
-
-                if (!response.ok) {
-                    throw new Error('触发 GitHub Action 失败');
-                }
-
+                // 创建临时文件存储认证码
+                await createTempCode(code);
                 // 等待token生成
                 await waitForToken();
             } catch (error) {
@@ -104,51 +78,67 @@
             }
         }
 
-        async function createPAT(code) {
+        async function createTempCode(code) {
             try {
-                const tokenResponse = await fetch('https://github.com/login/oauth/access_token', {
-                    method: 'POST',
+                const config = await getConfig();
+                if (!config || !config.client_id) {
+                    throw new Error('无法加载配置');
+                }
+
+                // 使用 GitHub API 创建一个临时文件来存储认证码
+                const response = await fetch(`https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/contents/.temp/${Date.now()}.json`, {
+                    method: 'PUT',
                     headers: {
-                        'Accept': 'application/json',
+                        'Accept': 'application/vnd.github.v3+json',
+                        'Authorization': `Bearer ${config.client_id}`,
                         'Content-Type': 'application/json',
                     },
                     body: JSON.stringify({
-                        client_id: await getClientId(),
-                        client_secret: await getClientSecret(),
-                        code: code
+                        message: 'Store temporary code',
+                        content: btoa(JSON.stringify({
+                            code: code,
+                            timestamp: new Date().toISOString()
+                        }))
                     })
                 });
 
-                if (!tokenResponse.ok) {
-                    throw new Error('Token exchange failed');
+                if (!response.ok) {
+                    throw new Error('无法存储临时认证码');
                 }
 
-                const data = await tokenResponse.json();
-                return data.access_token;
+                // 触发 GitHub Action
+                await fetch(`https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/dispatches`, {
+                    method: 'POST',
+                    headers: {
+                        'Accept': 'application/vnd.github.v3+json',
+                        'Authorization': `Bearer ${config.client_id}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        event_type: 'oauth-callback',
+                        client_payload: {
+                            timestamp: new Date().toISOString()
+                        }
+                    })
+                });
             } catch (error) {
-                console.error('Error creating PAT:', error);
-                return null;
+                console.error('Error creating temp code:', error);
+                throw error;
             }
         }
 
-        async function getClientId() {
+        async function getConfig() {
             try {
                 const response = await fetch('/log/config.json');
                 if (!response.ok) {
                     throw new Error('配置加载失败');
                 }
                 const config = await response.json();
-                return config.client_id;
+                return config;
             } catch (error) {
-                console.error('Error loading client ID:', error);
+                console.error('Error loading config:', error);
                 throw error;
             }
-        }
-
-        async function getClientSecret() {
-            // 这里应该从环境变量或安全存储中获取
-            // 在这个例子中，我们会依赖 GitHub Action 中的 secret
-            return '';
         }
 
         async function waitForToken(attempts = 0) {
