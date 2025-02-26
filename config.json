@@ -3,6 +3,6 @@
   "clientSecret": "",
   "redirectUri": {
       "development": "http://localhost:8000/index.html",
-      "production": "https://your-username.github.io/your-repo/index.html"
+      "production": "https://imataw.github.io/log/index.html"
   }
 }
