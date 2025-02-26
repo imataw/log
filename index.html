@@ -103,19 +103,24 @@
             background: #eee;
         }
         .status {
-            margin-top: 10px;
+            margin: 10px 0;
             padding: 10px;
             border-radius: 4px;
             display: none;
         }
-        .status.success {
-            background: #f0f9eb;
-            color: #67c23a;
+        .status.info {
+            background-color: #e3f2fd;
+            color: #1976d2;
             display: block;
         }
         .status.error {
-            background: #fef0f0;
-            color: #f56c6c;
+            background-color: #ffebee;
+            color: #c62828;
+            display: block;
+        }
+        .status.success {
+            background-color: #e8f5e9;
+            color: #2e7d32;
             display: block;
         }
         .login-button {
@@ -153,6 +158,8 @@
                 <!-- 登录按钮或用户信息将在这里显示 -->
             </div>
         </div>
+
+        <div id="status" class="status"></div>
 
         <div class="form-group">
             <textarea id="thoughtContent" class="form-control" rows="4" placeholder="写下你的想法..."></textarea>
@@ -267,11 +274,7 @@
             
             if (token) {
                 try {
-                    const response = await fetch('https://api.github.com/user', {
-                        headers: {
-                            'Authorization': `token ${token}`
-                        }
-                    });
+                    const response = await callGitHubApi('user');
                     if (response.ok) {
                         const user = await response.json();
                         authSection.innerHTML = `
@@ -301,27 +304,49 @@
             return false;
         }
 
-        function showStatus(message, type) {
-            const status = document.getElementById('status');
-            status.textContent = message;
-            status.className = `status ${type}`;
-            setTimeout(() => {
-                status.style.display = 'none';
-            }, 3000);
+        // 显示状态信息
+        function showStatus(message, type = 'info') {
+            const statusElement = document.getElementById('status');
+            if (!statusElement) {
+                console.warn('Status element not found');
+                return;
+            }
+            statusElement.textContent = message;
+            statusElement.className = `status ${type}`;
         }
 
         // 从GitHub加载数据
         async function loadThoughts() {
             try {
-                const response = await callGitHubApi(`/repos/${localStorage.getItem('github_username')}/${localStorage.getItem('github_repo')}/contents/thoughts.json`);
-                if (response.content) {
-                    const decodedContent = atob(response.content);
-                    thoughts = JSON.parse(decodedContent);
+                const token = localStorage.getItem('github_token');
+                if (!token) {
+                    console.log('No token found, skipping load');
+                    return;
+                }
+
+                const response = await callGitHubApi('user');
+                if (!response.ok) {
+                    throw new Error('未登录');
+                }
+                const user = await response.json();
+                
+                // 加载thoughts.json
+                const thoughtsResponse = await fetch('thoughts.json');
+                if (thoughtsResponse.ok) {
+                    thoughts = await thoughtsResponse.json();
                     renderThoughts(thoughts);
+                } else {
+                    console.log('No thoughts found, starting with empty array');
+                    thoughts = [];
                 }
             } catch (error) {
                 console.error('加载数据失败:', error);
-                showStatus('加载数据失败', 'error');
+                if (error.message === '未登录') {
+                    // 如果是未登录错误，静默处理
+                    console.log('User not logged in, skipping load');
+                    return;
+                }
+                showStatus('加载数据失败: ' + error.message, 'error');
             }
         }
 
@@ -364,20 +389,23 @@
                 throw new Error('未登录');
             }
 
-            const response = await fetch(`https://api.github.com${endpoint}`, {
-                ...options,
+            const defaultOptions = {
                 headers: {
-                    ...options.headers,
                     'Authorization': `token ${token}`,
                     'Accept': 'application/vnd.github.v3+json'
                 }
-            });
+            };
 
-            if (!response.ok) {
-                throw new Error(`GitHub API 错误: ${response.statusText}`);
-            }
+            const finalOptions = {
+                ...defaultOptions,
+                ...options,
+                headers: {
+                    ...defaultOptions.headers,
+                    ...options.headers
+                }
+            };
 
-            return response.json();
+            return fetch(`https://api.github.com/${endpoint}`, finalOptions);
         }
 
         function formatDate(date) {
