@@ -184,7 +184,14 @@
         // 获取当前环境的redirectUri
         function getRedirectUri() {
             if (!config || !config.redirectUri) return null;
-            return isProduction() ? config.redirectUri.production : config.redirectUri.development;
+            // 如果URL中包含index.html，使用完整的redirectUri
+            if (window.location.href.includes('index.html')) {
+                return isProduction() ? config.redirectUri.production : config.redirectUri.development;
+            }
+            // 否则使用不带index.html的URL
+            return isProduction() 
+                ? config.redirectUri.production.replace('/index.html', '/') 
+                : config.redirectUri.development.replace('/index.html', '/');
         }
 
         // 加载配置
@@ -196,6 +203,7 @@
                 if (!config.clientId || !redirectUri) {
                     showStatus('请在config.json中设置GitHub OAuth配置', 'error');
                 }
+                console.log('Current redirect URI:', redirectUri); // 添加调试信息
             } catch (error) {
                 console.error('加载配置失败:', error);
                 showStatus('加载配置失败', 'error');
@@ -217,104 +225,38 @@
 
             const state = Math.random().toString(36).substring(7);
             localStorage.setItem('oauth_state', state);
-            const authUrl = `https://github.com/login/oauth/authorize?client_id=${config.clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=${SCOPE}&state=${state}`;
+            const authUrl = `https://github.com/login/oauth/authorize?` +
+                `client_id=${config.clientId}&` +
+                `redirect_uri=${encodeURIComponent(redirectUri)}&` +
+                `scope=${SCOPE}&` +
+                `state=${state}&` +
+                `response_type=token`; // 使用implicit grant flow
             window.location.href = authUrl;
         }
 
         // 处理OAuth回调
         async function handleCallback() {
-            if (!config) {
-                await loadConfig();
-            }
-            const redirectUri = getRedirectUri();
-            if (!config || !config.clientId || !config.clientSecret || !redirectUri) {
-                showStatus('GitHub OAuth配置未设置', 'error');
-                return;
+            const hash = window.location.hash;
+            if (hash && hash.includes('access_token=')) {
+                const params = new URLSearchParams(hash.substring(1));
+                const token = params.get('access_token');
+                const state = params.get('state');
+                const savedState = localStorage.getItem('oauth_state');
+
+                if (state === savedState) {
+                    localStorage.setItem('github_token', token);
+                    // 清除URL中的token
+                    window.history.replaceState({}, document.title, window.location.pathname);
+                    await checkAuth();
+                    return;
+                }
             }
 
             const urlParams = new URLSearchParams(window.location.search);
-            const code = urlParams.get('code');
-            const state = urlParams.get('state');
-            const savedState = localStorage.getItem('oauth_state');
-
-            if (code && state === savedState) {
-                try {
-                    const tokenUrl = `https://cors-anywhere.herokuapp.com/https://github.com/login/oauth/access_token`;
-                    const response = await fetch(tokenUrl, {
-                        method: 'POST',
-                        headers: {
-                            'Accept': 'application/json',
-                            'Content-Type': 'application/json',
-                        },
-                        body: JSON.stringify({
-                            client_id: config.clientId,
-                            client_secret: config.clientSecret,
-                            code: code,
-                            redirect_uri: redirectUri,
-                            state: state
-                        })
-                    });
-
-                    if (response.ok) {
-                        const data = await response.json();
-                        if (data.access_token) {
-                            localStorage.setItem('github_token', data.access_token);
-                            
-                            // 获取用户信息
-                            const userResponse = await fetch('https://api.github.com/user', {
-                                headers: {
-                                    'Authorization': `token ${data.access_token}`
-                                }
-                            });
-                            
-                            if (userResponse.ok) {
-                                const user = await userResponse.json();
-                                localStorage.setItem('github_username', user.login);
-                                localStorage.setItem('github_repo', `thoughts-${user.login}`);
-                                
-                                // 检查仓库是否存在，不存在则创建
-                                await checkAndCreateRepo(data.access_token);
-                            }
-                        }
-                    }
-                    
-                    // 清除URL参数并刷新页面
-                    window.history.replaceState({}, document.title, redirectUri);
-                    location.reload();
-                } catch (error) {
-                    console.error('Failed to handle OAuth callback:', error);
-                    showStatus('登录失败，请重试', 'error');
-                }
-            }
-        }
-
-        // 检查并创建仓库
-        async function checkAndCreateRepo(token) {
-            const repoName = localStorage.getItem('github_repo');
-            try {
-                const response = await fetch(`https://api.github.com/repos/${localStorage.getItem('github_username')}/${repoName}`, {
-                    headers: {
-                        'Authorization': `token ${token}`
-                    }
-                });
-
-                if (response.status === 404) {
-                    // 仓库不存在，创建新仓库
-                    await fetch('https://api.github.com/user/repos', {
-                        method: 'POST',
-                        headers: {
-                            'Authorization': `token ${token}`,
-                            'Content-Type': 'application/json'
-                        },
-                        body: JSON.stringify({
-                            name: repoName,
-                            private: true,
-                            description: 'My Thoughts Repository'
-                        })
-                    });
-                }
-            } catch (error) {
-                console.error('Failed to check/create repository:', error);
+            const error = urlParams.get('error');
+            if (error) {
+                showStatus(`GitHub登录失败: ${error}`, 'error');
+                return;
             }
         }
 

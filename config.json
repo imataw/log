@@ -1,6 +1,5 @@
 {
   "clientId": "Ov23liHEBd5PYqT2qqlU",
-  "clientSecret": "",
   "redirectUri": {
       "development": "http://localhost:8000/index.html",
       "production": "https://imataw.github.io/log/index.html"
