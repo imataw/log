@@ -448,7 +448,7 @@
                     <input type="password" id="githubToken" placeholder="输入你的GitHub Token">
                     <button class="toggle-password" type="button" title="显示/隐藏">
                         <svg class="eye-icon" viewBox="0 0 16 16" width="16" height="16">
-                            <path class="eye-open" fill="currentColor" d="M8 2c1.981 0 3.671.992 4.933 2.078 1.27 1.091 2.187 2.345 2.637 3.023a1.62 1.62 0 0 1 0 1.798c-.45.678-1.367 1.932-2.637 3.023C11.67 13.008 9.981 14 8 14c-1.981 0-3.671-.992-4.933-2.078C1.797 10.83.88 9.576.43 8.898a1.62 1.62 0 0 1 0-1.798c.45-.677 1.367-1.931 2.637-3.022C4.33 2.992 6.019 2 8 2ZM1.679 7.932a.12.12 0 0 0 0 .136c.411.622 1.241 1.75 2.366 2.717C5.176 11.758 6.527 12.5 8 12.5c1.473 0 2.825-.742 3.955-1.715 1.124-.967 1.954-2.096 2.366-2.717a.12.12 0 0 0 0-.136c-.412-.621-1.242-1.75-2.366-2.717C10.824 4.242 9.473 3.5 8 3.5c-1.473 0-2.825.742-3.955 1.715-1.124.967-1.954 2.096-2.366 2.717ZM8 10a2 2 0 1 1-.001-3.999A2 2 0 0 1 8 10Z"></path>
+                            <path class="eye-open" fill="currentColor" d="M8 2c1.981 0 3.671.992 4.933 2.078 1.27 1.091 2.187 2.345 2.637 3.023a1.62 1.62 0 0 1 0 1.798c-.45.678-1.367 1.932-2.637 3.023C11.67 13.008 9.981 14 8 14c-1.981 0-3.671-.992-4.933-2.078C1.797 10.83.88 9.576.43 8.898a1.62 1.62 0 0 1 0-1.798c.45-.677 1.367-1.931 2.637-3.022C4.33 2.992 6.019 2 8 2ZM1.679 7.932a.12.12 0 0 0 0 .136c.411.622 1.241 1.75 2.366 2.717C5.176 11.758 6.527 12.5 8 12.5c1.473 0 2.825-.742 3.955-1.715 1.124-.967 1.954-2.096 2.366-2.717a.12.12 0 0 0 0-.136c-.412-.621-1.242-1.75-2.366-2.717C10.824 4.242 9.473 3.5 8 3.5c-1.473 0-2.825.742-3.955 1.715-1.124.967-1.954 2.096-2.366 2.717ZM8 10a2 2 0 1 1-.001-3.999A2 2 0 0 1 8 10Zm0-1a2 2 0 1 0 0-4 2 2 0 0 0 0 4Z"/>
                             <path class="eye-closed" fill="currentColor" style="display:none" d="M3.98 2.47a.75.75 0 0 1 .98-.06l.09.06 10.29 10.3a.75.75 0 0 1-.98 1.14l-.09-.06-2.25-2.25a9.06 9.06 0 0 1-2.86 1.25c-.1.02-.13.02-.17.02H8c-1.98 0-3.67-.99-4.93-2.08C1.8 9.73.88 8.48.43 7.8a1.62 1.62 0 0 1 0-1.8c.45-.67 1.37-1.92 2.637-3.02a7.97 7.97 0 0 1 1.17-.82L3.03 1.03a.75.75 0 0 1 .95-1.1Zm1.27 3.73-1.2 1.2c-.38.3-.72.64-1.02.98C2.92 9.07 7.07 11.2 8 11.2c.14 0 .3-.02.43-.05l-1.22-1.22a2 2 0 0 1-2.7-2.7l.74-.73ZM8 2c-.17 0-.34.01-.51.03L6.09 3.43c.55-.22 1.22-.33 1.91-.33 1.473 0 2.824.742 3.955 1.715 1.124.967 1.954 2.096 2.366 2.717a.12.12 0 0 1 0 .136c-.241.364-.588.775-.99 1.19l1.05 1.05c.47-.47.89-.97 1.23-1.41a1.62 1.62 0 0 0 0-1.798c-.45-.678-1.37-1.932-2.637-3.023C11.67 2.992 9.981 2 8 2Z M6.75 6.72l2.54 2.54a2 2 0 0 0-2.54-2.54Z"></path>
                         </svg>
                     </button>
@@ -740,39 +740,155 @@
     // 保存token和配置
     function saveToken() {
         const token = document.getElementById('githubToken').value.trim();
-        const expireDays = parseInt(document.getElementById('tokenExpiration').value) || 1;
-
         if (!token) {
-            showTokenStatus('请输入 Token', false);
+            showTokenStatus('请输入 GitHub Token', false);
             return;
         }
 
-        if (expireDays < 1) {
-            showTokenStatus('过期时间必须大于 0 分钟', false);
-            return;
-        }
-
-        config = { 
-            ...GITHUB_CONFIG,
-            token
-        };
-        localStorage.setItem('github_config', JSON.stringify(config));
+        // 保存到 localStorage
+        localStorage.setItem('github_token', token);
+        config.token = token;
         
-        // 设置过期时间
-        const expireTime = new Date().getTime() + (expireDays * 60 * 1000);
-        localStorage.setItem(tokenExpireKey, expireTime.toString());
-
-        showTokenStatus('设置已保存', true);
-        document.getElementById('settingsSection').classList.remove('visible');
+        // 设置过期时间为90天后
+        const expireTime = new Date();
+        expireTime.setDate(expireTime.getDate() + 90);
+        localStorage.setItem(tokenExpireKey, expireTime.getTime().toString());
+        
+        showTokenStatus('Token 已保存', true);
+        
+        // 保存后立即加载想法
         loadIdeas();
     }
 
-    function showTokenStatus(message, isSuccess) {
-        const status = document.getElementById('tokenStatus');
-        status.textContent = message;
-        status.className = 'status ' + (isSuccess ? 'success' : 'error');
+    function initializeSettings() {
+        // 从 localStorage 加载 token
+        const savedToken = localStorage.getItem('github_token');
+        if (savedToken) {
+            document.getElementById('githubToken').value = savedToken;
+            config.token = savedToken;
+            
+            // 如果token没过期，直接加载想法
+            if (!checkTokenExpired()) {
+                loadIdeas();
+            }
+        }
     }
 
+    // 从GitHub加载想法
+    async function loadIdeas() {
+        if (!config.token) return;
+
+        try {
+            const response = await fetch(`https://api.github.com/repos/${GITHUB_CONFIG.owner}/${GITHUB_CONFIG.repo}/contents/ideas.json`, {
+                headers: {
+                    'Authorization': `token ${config.token}`,
+                    'Accept': 'application/vnd.github.v3+json'
+                }
+            });
+            
+            if (response.status === 404) {
+                // 文件不存在时初始化为空数组
+                ideas = [];
+                currentSha = '';
+                displayIdeas();
+                return;
+            }
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                if (response.status === 401) {
+                    showTokenStatus('Token无效或已过期', false);
+                } else {
+                    showTokenStatus(`加载失败: ${errorData.message}`, false);
+                }
+                return;
+            }
+
+            const data = await response.json();
+            currentSha = data.sha;
+            const content = base64ToUtf8(data.content);
+            ideas = JSON.parse(content);
+            displayIdeas();
+        } catch (error) {
+            console.error('加载想法失败:', error);
+            showTokenStatus('加载失败，请检查网络连接', false);
+        }
+    }
+    
+    // 显示想法
+    function displayIdeas() {
+        ideasList.innerHTML = '';
+        ideas.forEach(idea => {
+            const ideaCard = document.createElement('div');
+            ideaCard.className = 'idea-card';
+            ideaCard.innerHTML = `
+                <p>${idea.content}</p>
+                <div class="timestamp">${idea.timestamp}</div>
+            `;
+            ideasList.prepend(ideaCard);
+        });
+    }
+    
+    // 保存想法到GitHub
+    async function saveIdeas() {
+        if (!config.token) {
+            showTokenStatus('请先设置 Token', false);
+            return;
+        }
+
+        try {
+            console.log('正在保存到仓库:', `${GITHUB_CONFIG.owner}/${GITHUB_CONFIG.repo}`);
+            const content = utf8ToBase64(JSON.stringify(ideas, null, 2));
+            console.log('准备发送请求...');
+            
+            // 构建请求体
+            const requestBody = {
+                message: '更新想法',
+                content: content
+            };
+            
+            // 只有在更新文件时才需要 sha
+            if (currentSha) {
+                requestBody.sha = currentSha;
+            }
+
+            const response = await fetch(`https://api.github.com/repos/${GITHUB_CONFIG.owner}/${GITHUB_CONFIG.repo}/contents/ideas.json`, {
+                method: 'PUT',
+                headers: {
+                    'Authorization': `token ${config.token}`,
+                    'Accept': 'application/vnd.github.v3+json',
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(requestBody)
+            });
+
+            console.log('GitHub API 响应状态:', response.status);
+            if (!response.ok) {
+                const errorData = await response.json();
+                console.error('GitHub API 错误详情:', errorData);
+                if (response.status === 401) {
+                    showTokenStatus('Token 无效或已过期，请重新设置', false);
+                    localStorage.removeItem('github_config');
+                    localStorage.removeItem(tokenExpireKey);
+                    config = {};
+                } else if (response.status === 404) {
+                    showTokenStatus('找不到仓库，请确认仓库名称是否正确', false);
+                } else {
+                    showTokenStatus(`保存失败: ${errorData.message}`, false);
+                }
+                return;
+            }
+
+            const data = await response.json();
+            currentSha = data.content.sha;
+            showTokenStatus('保存成功！', true);
+        } catch (error) {
+            console.error('保存想法失败:', error);
+            showTokenStatus(`保存失败: ${error.message}`, false);
+        }
+    }
+    
+    // 处理表单提交
     document.addEventListener('DOMContentLoaded', () => {
         const ideaForm = document.getElementById('ideaForm');
         const ideasList = document.getElementById('ideasList');
@@ -785,121 +901,6 @@
             loadIdeas();
         }
         
-        // 从GitHub加载想法
-        async function loadIdeas() {
-            if (!config.token) return;
-
-            try {
-                const response = await fetch(`https://api.github.com/repos/${GITHUB_CONFIG.owner}/${GITHUB_CONFIG.repo}/contents/ideas.json`, {
-                    headers: {
-                        'Authorization': `token ${config.token}`,
-                        'Accept': 'application/vnd.github.v3+json'
-                    }
-                });
-                
-                if (response.status === 404) {
-                    // 文件不存在时初始化为空数组
-                    ideas = [];
-                    currentSha = '';
-                    displayIdeas();
-                    return;
-                }
-
-                if (!response.ok) {
-                    const errorData = await response.json();
-                    if (response.status === 401) {
-                        showTokenStatus('Token无效或已过期', false);
-                    } else {
-                        showTokenStatus(`加载失败: ${errorData.message}`, false);
-                    }
-                    return;
-                }
-
-                const data = await response.json();
-                currentSha = data.sha;
-                const content = base64ToUtf8(data.content);
-                ideas = JSON.parse(content);
-                displayIdeas();
-            } catch (error) {
-                console.error('加载想法失败:', error);
-                showTokenStatus('加载失败，请检查网络连接', false);
-            }
-        }
-        
-        // 显示想法
-        function displayIdeas() {
-            ideasList.innerHTML = '';
-            ideas.forEach(idea => {
-                const ideaCard = document.createElement('div');
-                ideaCard.className = 'idea-card';
-                ideaCard.innerHTML = `
-                    <p>${idea.content}</p>
-                    <div class="timestamp">${idea.timestamp}</div>
-                `;
-                ideasList.prepend(ideaCard);
-            });
-        }
-        
-        // 保存想法到GitHub
-        async function saveIdeas() {
-            if (!config.token) {
-                showTokenStatus('请先设置 Token', false);
-                return;
-            }
-
-            try {
-                console.log('正在保存到仓库:', `${GITHUB_CONFIG.owner}/${GITHUB_CONFIG.repo}`);
-                const content = utf8ToBase64(JSON.stringify(ideas, null, 2));
-                console.log('准备发送请求...');
-                
-                // 构建请求体
-                const requestBody = {
-                    message: '更新想法',
-                    content: content
-                };
-                
-                // 只有在更新文件时才需要 sha
-                if (currentSha) {
-                    requestBody.sha = currentSha;
-                }
-
-                const response = await fetch(`https://api.github.com/repos/${GITHUB_CONFIG.owner}/${GITHUB_CONFIG.repo}/contents/ideas.json`, {
-                    method: 'PUT',
-                    headers: {
-                        'Authorization': `token ${config.token}`,
-                        'Accept': 'application/vnd.github.v3+json',
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify(requestBody)
-                });
-
-                console.log('GitHub API 响应状态:', response.status);
-                if (!response.ok) {
-                    const errorData = await response.json();
-                    console.error('GitHub API 错误详情:', errorData);
-                    if (response.status === 401) {
-                        showTokenStatus('Token 无效或已过期，请重新设置', false);
-                        localStorage.removeItem('github_config');
-                        localStorage.removeItem(tokenExpireKey);
-                        config = {};
-                    } else if (response.status === 404) {
-                        showTokenStatus('找不到仓库，请确认仓库名称是否正确', false);
-                    } else {
-                        showTokenStatus(`保存失败: ${errorData.message}`, false);
-                    }
-                    return;
-                }
-
-                const data = await response.json();
-                currentSha = data.content.sha;
-                showTokenStatus('保存成功！', true);
-            } catch (error) {
-                console.error('保存想法失败:', error);
-                showTokenStatus(`保存失败: ${error.message}`, false);
-            }
-        }
-        
-        // 处理表单提交
         ideaForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             
@@ -953,54 +954,24 @@
     updateThemeIcon(savedTheme);
 
     // 初始化设置
-    function initializeSettings() {
-        const savedToken = localStorage.getItem('githubToken');
-        const tokenInput = document.getElementById('githubToken');
-        const expirationInput = document.getElementById('tokenExpiration');
-        
-        if (savedToken) {
-            tokenInput.value = savedToken;
-            // 解析token并获取过期时间
-            try {
-                const tokenParts = savedToken.split('.');
-                if (tokenParts.length === 3) {
-                    const payload = JSON.parse(atob(tokenParts[1]));
-                    if (payload.exp) {
-                        const expirationDate = new Date(payload.exp * 1000);
-                        const now = new Date();
-                        const minutesUntilExpiration = Math.floor((expirationDate - now) / 60000);
-                        if (minutesUntilExpiration > 0) {
-                            expirationInput.value = minutesUntilExpiration;
-                        }
-                    }
-                }
-            } catch (e) {
-                console.error('Error parsing token:', e);
-            }
+    initializeSettings();
+
+    // 设置密码显示切换
+    const toggleButton = document.querySelector('.toggle-password');
+    const eyeOpen = document.querySelector('.eye-open');
+    const eyeClosed = document.querySelector('.eye-closed');
+    
+    toggleButton.addEventListener('click', function() {
+        const input = document.getElementById('githubToken');
+        if (input.type === 'password') {
+            input.type = 'text';
+            eyeOpen.style.display = 'none';
+            eyeClosed.style.display = 'block';
+        } else {
+            input.type = 'password';
+            eyeOpen.style.display = 'block';
+            eyeClosed.style.display = 'none';
         }
-
-        // 设置密码显示切换
-        const toggleButton = document.querySelector('.toggle-password');
-        const eyeOpen = document.querySelector('.eye-open');
-        const eyeClosed = document.querySelector('.eye-closed');
-        
-        toggleButton.addEventListener('click', function() {
-            const input = document.getElementById('githubToken');
-            if (input.type === 'password') {
-                input.type = 'text';
-                eyeOpen.style.display = 'none';
-                eyeClosed.style.display = 'block';
-            } else {
-                input.type = 'password';
-                eyeOpen.style.display = 'block';
-                eyeClosed.style.display = 'none';
-            }
-        });
-    }
-
-    // 在页面加载时初始化设置
-    document.addEventListener('DOMContentLoaded', function() {
-        initializeSettings();
     });
 
     // 日语键盘功能
