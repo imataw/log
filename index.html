@@ -718,6 +718,16 @@
     };
     let config = JSON.parse(localStorage.getItem('github_config') || '{}');
     const tokenExpireKey = 'token_expire_time';
+    let ideas = [];
+    let currentSha = '';
+    let jpKeyboardVisible = false;
+
+    // 显示token状态
+    function showTokenStatus(message, isSuccess) {
+        const status = document.getElementById('tokenStatus');
+        status.textContent = message;
+        status.className = 'status ' + (isSuccess ? 'success' : 'error');
+    }
 
     // 检查token是否过期
     function checkTokenExpired() {
@@ -892,8 +902,6 @@
     document.addEventListener('DOMContentLoaded', () => {
         const ideaForm = document.getElementById('ideaForm');
         const ideasList = document.getElementById('ideasList');
-        let ideas = [];
-        let currentSha = '';
 
         // 填充已保存的配置
         if (config.token && !checkTokenExpired()) {
@@ -975,8 +983,6 @@
     });
 
     // 日语键盘功能
-    let jpKeyboardVisible = false;
-
     function toggleJapaneseKeyboard() {
         const keyboard = document.querySelector('.jp-keyboard');
         jpKeyboardVisible = !jpKeyboardVisible;
